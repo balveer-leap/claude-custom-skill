@@ -1,6 +1,6 @@
 # Claude estate-aware PR review, driven by the `estate-review` skill.
 #
-# Copy to .github/workflows/claude-estate-review.yml in each repository of the estate.
+# Copy to .github/workflows/claude-review.yml in each repository of the estate.
 # Setup (repository or organisation level):
 #   secret   CLAUDE_CODE_OAUTH_TOKEN  from `claude setup-token` (or swap in anthropic_api_key)
 #   variable ESTATE_REPOS             space-separated sibling repos, e.g. "acme/billing acme/ledger"
