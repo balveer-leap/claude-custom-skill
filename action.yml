@@ -1,0 +1,128 @@
+name: Claude Estate Review
+description: Claude Code PR review that reads your sibling repositories and traces who consumes every value a change writes.
+author: Legacyleap
+branding:
+  icon: git-pull-request
+  color: orange
+
+inputs:
+  anthropic_api_key:
+    description: Anthropic API key. Set this or claude_code_oauth_token.
+    required: false
+    default: ""
+  claude_code_oauth_token:
+    description: Claude Code OAuth token from `claude setup-token`. Set this or anthropic_api_key.
+    required: false
+    default: ""
+  github_token:
+    description: Token used to post the review. Defaults to the Claude GitHub App token.
+    required: false
+    default: ""
+  estate_repos:
+    description: >
+      Sibling repositories to read as context, separated by spaces, commas or newlines.
+      Each is `name`, `owner/name` or a GitHub URL, optionally `@branch`. Bare names use
+      this repository's owner. Leave empty to review this repository on its own.
+    required: false
+    default: ""
+  estate_token:
+    description: Read token for private sibling repositories. Not needed for public ones.
+    required: false
+    default: ""
+  require_estate:
+    description: Fail instead of reviewing when a listed sibling cannot be cloned.
+    required: false
+    default: "true"
+  method:
+    description: Review method, `v2` (8 steps, default) or `v1` (6 steps).
+    required: false
+    default: "v2"
+  extra_instructions:
+    description: Optional text appended to the review prompt (house rules, areas to focus on).
+    required: false
+    default: ""
+  max_turns:
+    description: Maximum agent turns.
+    required: false
+    default: "80"
+  model:
+    description: Claude model to use. Empty uses the Claude Code default.
+    required: false
+    default: ""
+
+outputs:
+  siblings_cloned:
+    description: Number of sibling repositories made available in .estate/.
+    value: ${{ steps.estate.outputs.cloned }}
+
+runs:
+  using: composite
+  steps:
+    - name: Check setup
+      shell: bash
+      env:
+        HAS_KEY: ${{ inputs.anthropic_api_key != '' || inputs.claude_code_oauth_token != '' }}
+        METHOD: ${{ inputs.method }}
+        MAX_TURNS: ${{ inputs.max_turns }}
+        MODEL: ${{ inputs.model }}
+        EVENT: ${{ github.event_name }}
+      run: |
+        if [ "$HAS_KEY" != "true" ]; then
+          echo "::error::Set anthropic_api_key or claude_code_oauth_token. Pull requests from forks do not receive secrets, so skip them (see the README)."
+          exit 1
+        fi
+        case "$METHOD" in v1|v2) ;; *) echo "::error::method must be v1 or v2, got '$METHOD'"; exit 1;; esac
+        [[ "$MAX_TURNS" =~ ^[0-9]+$ ]] || { echo "::error::max_turns must be a number"; exit 1; }
+        [[ -z "$MODEL" || "$MODEL" =~ ^[A-Za-z0-9._:/@-]+$ ]] || { echo "::error::model must be a single model id"; exit 1; }
+        [ -d .git ] || { echo "::error::Run actions/checkout before this action."; exit 1; }
+        case "$EVENT" in pull_request|pull_request_target) ;; *) echo "::warning::This action reviews pull requests; event is '$EVENT'.";; esac
+
+    - name: Clone the rest of the estate (read-only context)
+      id: estate
+      shell: bash
+      env:
+        ESTATE_REPOS: ${{ inputs.estate_repos }}
+        ESTATE_TOKEN: ${{ inputs.estate_token }}
+        REQUIRE_ESTATE: ${{ inputs.require_estate }}
+        CURRENT_REPO: ${{ github.repository }}
+        GIT_BASE_URL: ${{ github.server_url }}
+      run: bash "$GITHUB_ACTION_PATH/scripts/clone-estate.sh"
+
+    - name: Build the review prompt
+      id: prompt
+      shell: bash
+      env:
+        METHOD: ${{ inputs.method }}
+        CLONED: ${{ steps.estate.outputs.cloned }}
+        EXTRA: ${{ inputs.extra_instructions }}
+        MAX_TURNS: ${{ inputs.max_turns }}
+        MODEL: ${{ inputs.model }}
+      run: |
+        file="$GITHUB_ACTION_PATH/prompts/review-$METHOD.md"
+        {
+          cat "$file"
+          if [ "${CLONED:-0}" = "0" ]; then
+            printf '\n%s\n' "Note: no sibling repositories were provided, so \`.estate/\` is empty. Run the method against this repository alone: find consumers of each changed value inside this repository, and report \"no consumer found in this repository\" where there is none."
+          fi
+          if [ -n "$EXTRA" ]; then
+            printf '\nAdditional instructions from the repository owner:\n%s\n' "$EXTRA"
+          fi
+        } > "$RUNNER_TEMP/estate-review-prompt.md"
+        delim="EOF_$(openssl rand -hex 16)"
+        { echo "text<<$delim"; cat "$RUNNER_TEMP/estate-review-prompt.md"; echo "$delim"; } >> "$GITHUB_OUTPUT"
+        args="--max-turns $MAX_TURNS --allowedTools Read,Grep,Glob,LS"
+        [ -n "$MODEL" ] && args="$args --model $MODEL"
+        echo "claude_args=$args" >> "$GITHUB_OUTPUT"
+
+    - name: Review with Claude
+      uses: anthropics/claude-code-action@v1
+      with:
+        anthropic_api_key: ${{ inputs.anthropic_api_key }}
+        claude_code_oauth_token: ${{ inputs.claude_code_oauth_token }}
+        github_token: ${{ inputs.github_token }}
+        # Puts the result on the PR as a comment instead of only in the workflow log.
+        track_progress: true
+        # Read-only tools only: no shell and no web, so the review cannot reach anything
+        # beyond this checkout and the .estate/ clones.
+        claude_args: ${{ steps.prompt.outputs.claude_args }}
+        prompt: ${{ steps.prompt.outputs.text }}

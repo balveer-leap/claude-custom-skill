@@ -1,0 +1,16 @@
+{
+  "name": "legacyleap",
+  "description": "Claude Code plugins from Legacyleap.",
+  "owner": {
+    "name": "Legacyleap",
+    "url": "https://github.com/open-legacyleap"
+  },
+  "plugins": [
+    {
+      "name": "estate-review",
+      "source": "./",
+      "description": "Estate-aware pull request review across multiple repositories.",
+      "version": "1.0.0"
+    }
+  ]
+}

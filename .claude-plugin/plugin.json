@@ -1,0 +1,10 @@
+{
+  "name": "estate-review",
+  "version": "1.0.0",
+  "description": "Estate-aware pull request review: traces every value a change writes into the sibling repositories that consume it, anchors each claim to a file and line, and ends with a safe / not safe to merge verdict.",
+  "author": { "name": "Legacyleap", "url": "https://github.com/open-legacyleap" },
+  "homepage": "https://github.com/open-legacyleap/claude-custom-skill",
+  "repository": "https://github.com/open-legacyleap/claude-custom-skill",
+  "license": "MIT",
+  "keywords": ["code-review", "pull-request", "multi-repo", "microservices"]
+}
