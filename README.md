@@ -145,9 +145,9 @@ shellcheck scripts/*.sh tests/*.sh
 
 ## Contributors
 
-- Rajat Singhal (CTO, Legacyleap) ([@srajat-leap](https://github.com/srajat-leap))
-- Balveer Singh (Senior Data Scientist, Legacyleap) ([@balveer-leap](https://github.com/balveer-leap))
-- Dhruv Kapur (Data Architect, Legacyleap) ([@dhruvk-leap](https://github.com/dhruvk-leap))
+- Rajat Singhal (CTO, Legacyleap)
+- Balveer Singh (Senior Data Scientist, Legacyleap)
+- Dhruv Kapur (Data Architect, Legacyleap)
 
 ## License
 
