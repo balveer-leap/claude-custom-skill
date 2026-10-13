@@ -143,6 +143,12 @@ bash tests/test-prompts.sh        # every copy of the method says the same thing
 shellcheck scripts/*.sh tests/*.sh
 ```
 
+## Contributors
+
+- Rajat Singhal (CTO, Legacyleap) ([@srajat-leap](https://github.com/srajat-leap))
+- Balveer Singh (Senior Data Scientist, Legacyleap) ([@balveer-leap](https://github.com/balveer-leap))
+- Dhruv Kapur (Data Architect, Legacyleap) ([@dhruvk-leap](https://github.com/dhruvk-leap))
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
